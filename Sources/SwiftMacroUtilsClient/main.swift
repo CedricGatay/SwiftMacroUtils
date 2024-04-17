@@ -1,8 +1,33 @@
 import SwiftMacroUtils
 
-let a = 17
-let b = 25
+class Test {
+    @VisibleForTesting
+    private var myAccessibleVar: String
 
-let (result, code) = #stringify(a + b)
+    init() {
+        myAccessibleVar = ""
+    }
 
-print("The value \(result) was produced by the code \"\(code)\"")
+    @VisibleForTesting
+    private func myAccessibleFunc() {
+        print(myAccessibleVar)
+    }
+
+    @VisibleForTesting
+    private func myOtherAccessibleFunc(_: String, arg _: Int) -> Int {
+        0
+    }
+
+    @VisibleForTesting
+    private func myThirdAccessibleFunc(_: String, arg _: Int) -> Int {
+        0
+    }
+}
+
+let test = Test()
+test._test_myAccessibleFunc()
+print(test._test_myOtherAccessibleFunc("a", arg: 12))
+print(test._test_myThirdAccessibleFunc("a", arg: 12))
+test.__test_myAccessibleVar = "FourtyTwo"
+print("Read through annotation \(test.__test_myAccessibleVar)")
+test._test_myAccessibleFunc()

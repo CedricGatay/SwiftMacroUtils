@@ -9,19 +9,29 @@ import XCTest
 import SwiftMacroUtilsMacros
 
 let testMacros: [String: Macro.Type] = [
-    "stringify": StringifyMacro.self,
+    "VisibleForTesting": VisibleForTestingMacro.self,
 ]
 #endif
 
 final class SwiftMacroUtilsTests: XCTestCase {
-    func testMacro() throws {
+    func testMacroOnVariable() throws {
         #if canImport(SwiftMacroUtilsMacros)
         assertMacroExpansion(
             """
-            #stringify(a + b)
+            @VisibleForTesting
+            var myVar: Int
             """,
             expandedSource: """
-            (a + b, "a + b")
+            var myVar: Int
+            
+            public var __test_myVar: Int {
+                get {
+                    self.myVar
+                }
+                set {
+                    self.myVar = newValue
+                }
+            }
             """,
             macros: testMacros
         )
@@ -30,15 +40,48 @@ final class SwiftMacroUtilsTests: XCTestCase {
         #endif
     }
 
-    func testMacroWithStringLiteral() throws {
+    func testMacroOnFunctionWithArgs() throws {
         #if canImport(SwiftMacroUtilsMacros)
         assertMacroExpansion(
-            #"""
-            #stringify("Hello, \(name)")
-            """#,
-            expandedSource: #"""
-            ("Hello, \(name)", #""Hello, \(name)""#)
-            """#,
+            """
+            @VisibleForTesting
+            private func myOtherAccessibleFunc(_: String, arg _: Int) -> Int {
+                0
+            }
+            """,
+            expandedSource: """
+            private func myOtherAccessibleFunc(_: String, arg _: Int) -> Int {
+                0
+            }
+            
+            public func _test_myOtherAccessibleFunc(_ arg0: String, arg arg1: Int) -> Int  {
+                myOtherAccessibleFunc(arg0, arg: arg1)
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+    func testMacroOnFunctionWithoutArgs() throws {
+        #if canImport(SwiftMacroUtilsMacros)
+        assertMacroExpansion(
+            """
+            @VisibleForTesting
+            private func myAccessibleFunc() {
+                print(myAccessibleVar)
+            }
+            """,
+            expandedSource: """
+            private func myAccessibleFunc() {
+                print(myAccessibleVar)
+            }
+            
+            public func _test_myAccessibleFunc()  {
+                myAccessibleFunc()
+            }
+            """,
             macros: testMacros
         )
         #else
