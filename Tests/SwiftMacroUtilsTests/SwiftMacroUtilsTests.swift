@@ -39,6 +39,29 @@ final class SwiftMacroUtilsTests: XCTestCase {
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
+    
+    func testMacroOnReadOnlyVariable() throws {
+        #if canImport(SwiftMacroUtilsMacros)
+        assertMacroExpansion(
+            """
+            @VisibleForTesting
+            let myVar: Int
+            """,
+            expandedSource: """
+            let myVar: Int
+            
+            public var __test_myVar: Int {
+                get {
+                    self.myVar
+                }
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
 
     func testMacroOnFunctionWithArgs() throws {
         #if canImport(SwiftMacroUtilsMacros)

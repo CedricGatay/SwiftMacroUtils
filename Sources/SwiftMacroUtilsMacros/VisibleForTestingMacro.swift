@@ -12,18 +12,31 @@ extension VisibleForTestingMacro: PeerMacro {
            let binding = varDecl.bindings.first,
            let typeAnnotation = binding.typeAnnotation,
            let identifier = binding.pattern.as(IdentifierPatternSyntax.self)?.identifier.trimmed {
-            return [
-                """
-                public var __test_\(raw: identifier)\(raw: typeAnnotation.description) {
-                get {
-                    self.\(raw: identifier)
-                }
-                set {
-                    self.\(raw: identifier) = newValue
-                }
-                }
-                """,
-            ]
+            if varDecl.bindingSpecifier.text == "var" {
+                return [
+                    """
+                    public var __test_\(raw: identifier)\(raw: typeAnnotation.description) {
+                    get {
+                        self.\(raw: identifier)
+                    }
+                    set {
+                        self.\(raw: identifier) = newValue
+                    }
+                    }
+                    """,
+                ]
+            } else {
+                return [
+                    """
+                    public var __test_\(raw: identifier)\(raw: typeAnnotation.description) {
+                    get {
+                        self.\(raw: identifier)
+                    }
+                    }
+                    """,
+                ]
+            }
+            
         }
         // generate func test accessor
         if let funcDecl = declaration.as(FunctionDeclSyntax.self) {
