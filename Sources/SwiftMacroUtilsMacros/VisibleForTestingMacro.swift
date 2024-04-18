@@ -7,7 +7,7 @@ import SwiftDiagnostics
 public enum VisibleForTestingMacro {}
 
 extension VisibleForTestingMacro: PeerMacro {
-    public static func expansion(of _: SwiftSyntax.AttributeSyntax, providingPeersOf declaration: some SwiftSyntax.DeclSyntaxProtocol, in context: some SwiftSyntaxMacros.MacroExpansionContext) throws -> [SwiftSyntax.DeclSyntax] {
+    public static func expansion(of attribute: SwiftSyntax.AttributeSyntax, providingPeersOf declaration: some SwiftSyntax.DeclSyntaxProtocol, in context: some SwiftSyntaxMacros.MacroExpansionContext) throws -> [SwiftSyntax.DeclSyntax] {
         // generate var test accessor
         if let varDecl = declaration.as(VariableDeclSyntax.self),
            let binding = varDecl.bindings.first,
@@ -58,15 +58,14 @@ extension VisibleForTestingMacro: PeerMacro {
         }
         if let initDecl = declaration.as(InitializerDeclSyntax.self) {
             let signature = initDecl.signature
-            
-            let modifiers = initDecl.modifiers
-            if !modifiers.map(\.name.text).contains("required") {
-                context.addDiagnostics(from: VisibleForTestingError.canOnlyBeAppliedOnRequiredInit, node: initDecl)
-                return []
-            }
+            // as we only got the subtree of the expression, we can't determine whether or not
+            // we're attaching to a class or struct type, this comment allows fixing build issue
+            // that can arise
             return [
                 """
                 public static func _test_init(\(raw: extractParameters(signature.parameterClause.parameters))) -> Self {
+                    // need to delegate to a `required init` if used in a Class
+                    // make the annotated `init` `required` to fix this build issue
                     Self.init(\(raw: buildArguments(signature.parameterClause.parameters)))
                 }
                 """
@@ -90,23 +89,4 @@ extension VisibleForTestingMacro: PeerMacro {
             }
         }.joined(separator: ",")
     }
-}
-
-enum VisibleForTestingError: Error, DiagnosticMessage {
-    var message: String {
-        switch self {
-        case .canOnlyBeAppliedOnRequiredInit:
-            "@VisibleForTesting can only be applied to a required init"
-        }
-    }
-    
-    var diagnosticID: MessageID {
-        .init(domain: "VisibleForTestingMacroExpansion", id: String(describing: self))
-    }
-    
-    var severity: DiagnosticSeverity {
-        .error
-    }
-    
-    case canOnlyBeAppliedOnRequiredInit
 }

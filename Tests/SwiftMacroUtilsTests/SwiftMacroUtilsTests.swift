@@ -112,7 +112,7 @@ final class SwiftMacroUtilsTests: XCTestCase {
         #endif
     }
     
-    func testMacroOnRequiredInit() throws {
+    func testMacroOnInit() throws {
         #if canImport(SwiftMacroUtilsMacros)
         assertMacroExpansion(
             """
@@ -127,6 +127,8 @@ final class SwiftMacroUtilsTests: XCTestCase {
             }
             
             public static func _test_init(_ arg0: String) -> Self {
+                // need to delegate to a `required init` if used in a Class
+                // make the annotated `init` `required` to fix this build issue
                 Self.init(arg0)
             }
             """,
@@ -137,27 +139,4 @@ final class SwiftMacroUtilsTests: XCTestCase {
         #endif
     }
     
-    func testMacroOnInitFailIfMissingRequired() throws {
-        #if canImport(SwiftMacroUtilsMacros)
-        assertMacroExpansion(
-            """
-            @VisibleForTesting
-            init(_ value: String) {
-                myAccessibleVar = value
-            }
-            """,
-            expandedSource: """
-            init(_ value: String) {
-                myAccessibleVar = value
-            }
-            """,
-            diagnostics: [
-                .init(message: "@VisibleForTesting can only be applied to a required init", line: 1, column: 1)
-            ],
-            macros: testMacros
-        )
-        #else
-        throw XCTSkip("macros are only supported when running tests for the host platform")
-        #endif
-    }
 }

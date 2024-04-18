@@ -31,6 +31,15 @@ class Test {
     }
 }
 
+struct Test2{
+    @VisibleForTesting
+    let myInnerVar: String
+    @VisibleForTesting
+    init(_ value: String) {
+        myInnerVar = value
+    }
+}
+
 let test = Test()
 test._test_myAccessibleFunc()
 print(test._test_myOtherAccessibleFunc("a", arg: 12))
