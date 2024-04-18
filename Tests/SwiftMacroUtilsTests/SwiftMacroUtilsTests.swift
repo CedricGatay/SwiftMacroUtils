@@ -111,4 +111,53 @@ final class SwiftMacroUtilsTests: XCTestCase {
         throw XCTSkip("macros are only supported when running tests for the host platform")
         #endif
     }
+    
+    func testMacroOnRequiredInit() throws {
+        #if canImport(SwiftMacroUtilsMacros)
+        assertMacroExpansion(
+            """
+            @VisibleForTesting
+            required init(_ value: String) {
+                myAccessibleVar = value
+            }
+            """,
+            expandedSource: """
+            required init(_ value: String) {
+                myAccessibleVar = value
+            }
+            
+            public static func _test_init(_ arg0: String) -> Self {
+                Self.init(arg0)
+            }
+            """,
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
+    
+    func testMacroOnInitFailIfMissingRequired() throws {
+        #if canImport(SwiftMacroUtilsMacros)
+        assertMacroExpansion(
+            """
+            @VisibleForTesting
+            init(_ value: String) {
+                myAccessibleVar = value
+            }
+            """,
+            expandedSource: """
+            init(_ value: String) {
+                myAccessibleVar = value
+            }
+            """,
+            diagnostics: [
+                .init(message: "@VisibleForTesting can only be applied to a required init", line: 1, column: 1)
+            ],
+            macros: testMacros
+        )
+        #else
+        throw XCTSkip("macros are only supported when running tests for the host platform")
+        #endif
+    }
 }

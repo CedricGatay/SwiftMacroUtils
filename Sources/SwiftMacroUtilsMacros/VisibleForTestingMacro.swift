@@ -2,11 +2,12 @@ import SwiftCompilerPlugin
 import SwiftSyntax
 import SwiftSyntaxBuilder
 import SwiftSyntaxMacros
+import SwiftDiagnostics
 
 public enum VisibleForTestingMacro {}
 
 extension VisibleForTestingMacro: PeerMacro {
-    public static func expansion(of _: SwiftSyntax.AttributeSyntax, providingPeersOf declaration: some SwiftSyntax.DeclSyntaxProtocol, in _: some SwiftSyntaxMacros.MacroExpansionContext) throws -> [SwiftSyntax.DeclSyntax] {
+    public static func expansion(of _: SwiftSyntax.AttributeSyntax, providingPeersOf declaration: some SwiftSyntax.DeclSyntaxProtocol, in context: some SwiftSyntaxMacros.MacroExpansionContext) throws -> [SwiftSyntax.DeclSyntax] {
         // generate var test accessor
         if let varDecl = declaration.as(VariableDeclSyntax.self),
            let binding = varDecl.bindings.first,
@@ -55,6 +56,22 @@ extension VisibleForTestingMacro: PeerMacro {
                 """,
             ]
         }
+        if let initDecl = declaration.as(InitializerDeclSyntax.self) {
+            let signature = initDecl.signature
+            
+            let modifiers = initDecl.modifiers
+            if !modifiers.map(\.name.text).contains("required") {
+                context.addDiagnostics(from: VisibleForTestingError.canOnlyBeAppliedOnRequiredInit, node: initDecl)
+                return []
+            }
+            return [
+                """
+                public static func _test_init(\(raw: extractParameters(signature.parameterClause.parameters))) -> Self {
+                    Self.init(\(raw: buildArguments(signature.parameterClause.parameters)))
+                }
+                """
+            ]
+        }
         return []
     }
 
@@ -73,4 +90,23 @@ extension VisibleForTestingMacro: PeerMacro {
             }
         }.joined(separator: ",")
     }
+}
+
+enum VisibleForTestingError: Error, DiagnosticMessage {
+    var message: String {
+        switch self {
+        case .canOnlyBeAppliedOnRequiredInit:
+            "@VisibleForTesting can only be applied to a required init"
+        }
+    }
+    
+    var diagnosticID: MessageID {
+        .init(domain: "VisibleForTestingMacroExpansion", id: String(describing: self))
+    }
+    
+    var severity: DiagnosticSeverity {
+        .error
+    }
+    
+    case canOnlyBeAppliedOnRequiredInit
 }

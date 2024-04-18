@@ -7,6 +7,13 @@ class Test {
     init() {
         myAccessibleVar = ""
     }
+    
+    @VisibleForTesting
+    required init(_ value: String) {
+        myAccessibleVar = value
+    }
+    
+   
 
     @VisibleForTesting
     private func myAccessibleFunc() {
