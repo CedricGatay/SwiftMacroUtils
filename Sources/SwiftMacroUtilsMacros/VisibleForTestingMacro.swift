@@ -76,7 +76,12 @@ extension VisibleForTestingMacro: PeerMacro {
 
     private static func extractParameters(_ parametersList: FunctionParameterListSyntax) -> String {
         parametersList.enumerated().map { offset, param in
-            "\(param.firstName.trimmed) arg\(offset): \(param.type)"
+            let suffix = if let defaultValue = param.defaultValue {
+                "\(defaultValue.trimmed)"
+            } else {
+                ""
+            }
+            return "\(param.firstName.trimmed) arg\(offset): \(param.type)\(suffix)"
         }.joined(separator: ",")
     }
 
