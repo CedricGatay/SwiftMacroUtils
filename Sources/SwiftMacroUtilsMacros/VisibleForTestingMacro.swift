@@ -13,9 +13,11 @@ extension VisibleForTestingMacro: PeerMacro {
            let binding = varDecl.bindings.first,
            let typeAnnotation = binding.typeAnnotation,
            let identifier = binding.pattern.as(IdentifierPatternSyntax.self)?.identifier.trimmed {
+            let attributes = cleanAttributesFromSelf(varDecl.attributes)
             if varDecl.bindingSpecifier.text == "var" {
                 return [
                     """
+                    \(raw: attributes)
                     public var __test_\(raw: identifier)\(raw: typeAnnotation.description) {
                     get {
                         self.\(raw: identifier)
@@ -29,6 +31,7 @@ extension VisibleForTestingMacro: PeerMacro {
             } else {
                 return [
                     """
+                    \(raw: attributes)
                     public var __test_\(raw: identifier)\(raw: typeAnnotation.description) {
                     get {
                         self.\(raw: identifier)
@@ -43,6 +46,8 @@ extension VisibleForTestingMacro: PeerMacro {
         if let funcDecl = declaration.as(FunctionDeclSyntax.self) {
             let funcName = funcDecl.name
             let signature = funcDecl.signature
+            let attributes = cleanAttributesFromSelf(funcDecl.attributes)
+            
             let returnType = if let returnClause = signature.returnClause {
                 "-> \(returnClause.type.description)"
             } else {
@@ -50,6 +55,7 @@ extension VisibleForTestingMacro: PeerMacro {
             }
             return [
                 """
+                \(raw: attributes)
                 public func _test_\(raw: funcName)(\(raw: extractParameters(signature.parameterClause.parameters))) \(raw: returnType) {
                 \(raw: funcName)(\(raw: buildArguments(signature.parameterClause.parameters)))
                 }
@@ -58,11 +64,13 @@ extension VisibleForTestingMacro: PeerMacro {
         }
         if let initDecl = declaration.as(InitializerDeclSyntax.self) {
             let signature = initDecl.signature
+            let attributes = cleanAttributesFromSelf(initDecl.attributes)
             // as we only got the subtree of the expression, we can't determine whether or not
             // we're attaching to a class or struct type, this comment allows fixing build issue
             // that can arise
             return [
                 """
+                \(raw: attributes)
                 public static func _test_init(\(raw: extractParameters(signature.parameterClause.parameters))) -> Self {
                     // need to delegate to a `required init` if used in a Class
                     // make the annotated `init` `required` to fix this build issue
@@ -93,5 +101,15 @@ extension VisibleForTestingMacro: PeerMacro {
                 "\(param.firstName.trimmed): arg\(offset)"
             }
         }.joined(separator: ",")
+    }
+    
+    private static func cleanAttributesFromSelf(_ attributes: AttributeListSyntax) -> AttributeListSyntax {
+        attributes.filter {
+            if case let .attribute(attribute) = $0,
+               attribute.attributeName.as(IdentifierTypeSyntax.self)?.name.text == "VisibleForTesting" {
+                return false
+            }
+            return true
+        }
     }
 }

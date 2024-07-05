@@ -40,6 +40,30 @@ struct Test2{
     }
 }
 
+struct Test3 {
+    @MainActor @VisibleForTesting var myVar: String = ""
+    @MainActor @VisibleForTesting var mySecondVar: String = ""
+    
+    @MainActor
+    @VisibleForTesting
+    init(){}
+    
+    @MainActor
+    @VisibleForTesting
+    func myMethodOnMainActor() {
+        
+    }
+}
+
+import SwiftMacroUtils
+
+struct Dog {
+    @VisibleForTesting
+    private var name: String?
+}
+
+
+
 let test = Test()
 test._test_myAccessibleFunc()
 print(test._test_myOtherAccessibleFunc("a", arg: 12))
